@@ -1,0 +1,5 @@
+Flask>=2.1.1
+Jinja2>=3.0.0
+qrcode[pil]==7.3
+Pillow==8.3.1
+wordcloud==1.8.2.2
