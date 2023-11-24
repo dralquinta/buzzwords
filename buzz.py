@@ -1,41 +1,43 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for
 import qrcode
-from PIL import Image
 from wordcloud import WordCloud
-from io import BytesIO, StringIO
+from io import BytesIO
 import threading
-import time
 import base64
+import os
+import time
 
 app = Flask(__name__)
 
 words = []
 lock = threading.Lock()
-wordcloud_img = None
+wordcloud_img_path = 'wordcloud.png'
 
 def generate_wordcloud_image():
     global words
-    global wordcloud_img
+    global wordcloud_img_path
 
     while True:
-        time.sleep(60)  # Generate word cloud every 60 seconds
-
         with lock:
             if words:
                 text = ' '.join(words)
-                wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text)
+                wordcloud = WordCloud(width=800, height=400, background_color='white')
+                wordcloud.generate(text)
 
-                img_bytes_io = BytesIO()
-                wordcloud.to_image().save(img_bytes_io, format='PNG')
-                img_bytes_io.seek(0)
+                wordcloud.to_file(wordcloud_img_path)
 
-                wordcloud_img = img_bytes_io.read()
-                words = []  # Clear the list of words
+                words = []
+
+        # Sleep after generating the word cloud
+        time.sleep(60)
 
 # Start a separate thread for generating the word cloud in the background
 wordcloud_thread = threading.Thread(target=generate_wordcloud_image)
 wordcloud_thread.daemon = True
 wordcloud_thread.start()
+
+# Sleep to ensure the word cloud thread has time to generate the initial image
+time.sleep(10)
 
 @app.route('/')
 def landing_page():
@@ -45,7 +47,7 @@ def landing_page():
         box_size=10,
         border=4,
     )
-    qr.add_data("http://144.22.58.211:5000/submit_word")
+    qr.add_data("http://144.22.51.76/submit_word")
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
@@ -54,25 +56,39 @@ def landing_page():
     img.save(img_bytes_io)
     img_bytes_io.seek(0)
 
-    # Encode the image bytes using base64
     img_base64 = base64.b64encode(img_bytes_io.read()).decode('utf-8')
 
-    return render_template('landing_page.html', qr_image=img_base64)
+    # Check if the word cloud image file exists
+    if os.path.exists(wordcloud_img_path):
+        with open(wordcloud_img_path, 'rb') as img_file:
+            wordcloud_img = base64.b64encode(img_file.read()).decode('utf-8')
+    else:
+        wordcloud_img = None
 
-@app.route('/submit_word', methods=['POST'])
+    # Generate the link to the word cloud page
+    wordcloud_link = url_for('display_wordcloud')
+
+    return render_template('landing_page.html', qr_image=img_base64, wordcloud_link=wordcloud_link, wordcloud_img=wordcloud_img)
+
+@app.route('/submit_word', methods=['GET', 'POST'])
 def submit_word():
-    word = request.form.get('word')
-    if word:
-        with lock:
-            words.append(word)
-        return redirect(url_for('landing_page'))
-    return "No word submitted"
+    if request.method == 'POST':
+        word = request.form.get('word')
+        if word:
+            with lock:
+                words.append(word)
+            return redirect(url_for('landing_page'))
+        return "No word submitted"
+    else:
+        return render_template('submit_word_page.html')
 
 @app.route('/wordcloud')
 def display_wordcloud():
-    if wordcloud_img:
-        return send_file(BytesIO(wordcloud_img), mimetype='image/png')
+    if os.path.exists(wordcloud_img_path):
+        with open(wordcloud_img_path, 'rb') as img_file:
+            wordcloud_img = base64.b64encode(img_file.read()).decode('utf-8')
+        return render_template('wordcloud_page.html', wordcloud_img=wordcloud_img)
     return "Word cloud not available yet"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

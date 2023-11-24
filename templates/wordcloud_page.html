@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Region Bogota</title>
+    <title>Word Cloud</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Bienvenidos a la region de Cloud de Bogota!!</h1>
-    <img src="data:image/png;base64,{{ qr_image|safe }}" alt="QR Code">
-
-    <!-- Hyperlink to the word cloud -->
-    <p><a href="{{ wordcloud_link }}">Click aqui para ver Word Cloud</a></p>
+    <h1>Word Cloud</h1>
+    <img src="data:image/png;base64,{{ wordcloud_img }}" alt="Word Cloud">
+    <a href="{{ url_for('landing_page') }}">Go Back</a>
 </body>
 </html>
