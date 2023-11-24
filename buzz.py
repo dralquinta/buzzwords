@@ -45,7 +45,7 @@ def landing_page():
         box_size=10,
         border=4,
     )
-    qr.add_data("http://127.0.0.1:5000/submit_word")
+    qr.add_data("http://144.22.58.211:5000/submit_word")
     qr.make(fit=True)
 
     img = qr.make_image(fill_color="black", back_color="white")
